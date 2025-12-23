@@ -7,33 +7,30 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      // 1. 基础配置：开启增强型衡量
       gtag('config', 'G-D5YSD14H3P', {
           'send_page_view': true,
-          'page_title': 'Home - Super Deals Finds Spain'
+          'page_title': 'Home - Super Deals Finds Spain',
+          'cookie_flags': 'SameSite=None;Secure' // 增强跨境追踪稳定性
       });
 
-      // 2. 核心追踪函数
       const tracker = {
-          // 商品点击
           sendClick: (item, pos) => {
               gtag('event', 'select_item', {
                   item_list_id: "main_list",
                   item_list_name: "Homepage Feed",
                   items: [{
-                      item_id: item.item_id,
+                      item_id: String(item.item_id),
                       item_name: item.title,
                       discount: item.discount_rate,
                       price: item.discount_price,
-                      item_variant: pos // 记录点击位置：carousel, grid_img, grid_btn
+                      item_variant: pos 
                   }]
               });
           },
-          // 商品曝光 (当商品进入视口)
           sendImpression: (item) => {
               gtag('event', 'view_item', {
                   items: [{
-                      item_id: item.item_id,
+                      item_id: String(item.item_id),
                       item_name: item.title,
                       price: item.discount_price
                   }]
@@ -64,6 +61,8 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         #back-to-top { position: fixed; bottom: 30px; right: 20px; width: 45px; height: 45px; background: #ff416c; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.3s; }
         #back-to-top.show { opacity: 1; visibility: visible; }
+        footer a { transition: color 0.2s; }
+        footer a:hover { color: #ff416c; }
     </style>
 </head>
 <body class="bg-gray-50 font-sans text-gray-900">
@@ -95,6 +94,22 @@
         <div id="sentinel" class="h-40 flex items-center justify-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div></div>
     </main>
 
+    <footer class="bg-white border-t mt-20 py-12 px-4">
+        <div class="max-w-7xl mx-auto text-center">
+            <div class="flex justify-center gap-6 mb-6 text-sm font-bold text-gray-500 uppercase tracking-widest">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="mailto:support@superdealsfinds.com">Contact Us</a>
+            </div>
+            <p class="text-xs text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                As an AliExpress Associate, Super Deals Finds earns from qualifying purchases. 
+                AliExpress and the AliExpress logo are trademarks of AliExpress.com, Inc. or its affiliates.
+                <br><br>
+                &copy; 2025 Super Deals Finds Spain. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
     <div id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})"><i class="fa-solid fa-arrow-up"></i></div>
 
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
@@ -105,6 +120,11 @@
         const itemsPerPage = 20;
 
         function formatPrice(price) { return parseFloat(price).toFixed(2); }
+
+        // 安全地将对象转为字符串
+        function safeString(obj) {
+            return JSON.stringify(obj).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
+        }
 
         async function init() {
             try {
@@ -117,24 +137,22 @@
                 allProducts = data.sort(() => Math.random() - 0.5);
                 document.getElementById('stats').innerText = `${data.length} PRODUCTOS`;
 
-                // 懒加载 + 曝光统计
                 const observer = new IntersectionObserver((entries) => {
                     entries.forEach(entry => {
                         if (entry.isIntersecting) {
                             if (entry.target.id === 'sentinel') {
                                 loadMore();
                             } else {
-                                // 统计商品曝光
                                 const itemData = JSON.parse(entry.target.getAttribute('data-item'));
                                 tracker.sendImpression(itemData);
-                                observer.unobserve(entry.target); // 每个商品只统计一次曝光
+                                observer.unobserve(entry.target);
                             }
                         }
                     });
                 }, { rootMargin: '100px' });
 
                 observer.observe(document.getElementById('sentinel'));
-                window.observer = observer; // 全局引用
+                window.observer = observer;
 
                 window.addEventListener('scroll', () => {
                     const btn = document.getElementById('back-to-top');
@@ -158,7 +176,7 @@
                             <h3 class="text-2xl md:text-4xl font-black mb-4 line-clamp-2">${item.title}</h3>
                             <div class="text-4xl md:text-6xl font-black text-yellow-400 mb-6">€${formatPrice(item.discount_price)}</div>
                             <a href="${item.affiliate_short_link}" 
-                               onclick='tracker.sendClick(${JSON.stringify(item).replace(/'/g, "&apos;")}, "carousel")'
+                               onclick='tracker.sendClick(${safeString(item)}, "carousel")'
                                target="_blank" class="inline-block px-12 py-4 bg-white text-red-600 font-black rounded-full shadow-xl">COMPRAR</a>
                         </div>
                     </div>
@@ -179,15 +197,15 @@
                 const stars = Math.round(item.comment_score || 0);
                 const card = document.createElement('div');
                 card.className = "product-card bg-white rounded-3xl overflow-hidden shadow-sm flex flex-col fade-in border border-gray-100";
-                card.setAttribute('data-item', JSON.stringify(item)); // 用于曝光统计
+                card.setAttribute('data-item', JSON.stringify(item));
                 
                 card.innerHTML = `
-                    <a href="${item.affiliate_short_link}" onclick='tracker.sendClick(${JSON.stringify(item).replace(/'/g, "&apos;")}, "grid_image")' target="_blank" class="block relative aspect-square bg-gray-50">
+                    <a href="${item.affiliate_short_link}" onclick='tracker.sendClick(${safeString(item)}, "grid_image")' target="_blank" class="block relative aspect-square bg-gray-50">
                         <img src="${item.item_main_pic}" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity" onload="this.style.opacity='1'">
                         <div class="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md">-${item.discount_rate}%</div>
                     </a>
                     <div class="p-4 flex flex-col flex-grow">
-                        <h3 class="text-[11px] font-bold line-clamp-2 h-8 mb-2 leading-tight">${item.title}</h3>
+                        <h3 class="text-[11px] font-bold line-clamp-2 h-8 mb-2 leading-tight text-gray-700">${item.title}</h3>
                         <div class="flex items-center gap-1 mb-3">
                             ${Array(5).fill(0).map((_, i) => `<i class="fa-solid fa-star text-[8px] ${i < stars ? 'text-yellow-400' : 'text-gray-100'}"></i>`).join('')}
                             <span class="text-[9px] text-gray-300 font-bold ml-1 uppercase tracking-tighter">${item.comment_30d || 0}+ vtas</span>
@@ -197,15 +215,21 @@
                                 <div class="text-[10px] text-gray-400 line-through italic font-mono leading-none">€${formatPrice(item.origin_price)}</div>
                                 <div class="text-xl font-black text-red-600 leading-none mt-1 font-mono">€${formatPrice(item.discount_price)}</div>
                             </div>
-                            <a href="${item.affiliate_short_link}" onclick='tracker.sendClick(${JSON.stringify(item).replace(/'/g, "&apos;")}, "grid_btn")' target="_blank" class="h-9 w-9 price-gradient text-white flex items-center justify-center rounded-2xl shadow-lg hover:rotate-12 transition-transform">
+                            <a href="${item.affiliate_short_link}" onclick='tracker.sendClick(${safeString(item)}, "grid_btn")' target="_blank" class="h-9 w-9 price-gradient text-white flex items-center justify-center rounded-2xl shadow-lg hover:rotate-12 transition-transform">
                                 <i class="fa-solid fa-arrow-right text-xs"></i>
                             </a>
                         </div>
                     </div>
                 `;
                 grid.appendChild(card);
-                window.observer.observe(card); // 开启对此卡片的曝光监听
+                window.observer.observe(card);
             });
+            
+            // 额外统计：每加载一次记录一个 GA 事件，看看用户翻了多少页
+            gtag('event', 'load_more', {
+                'page_number': Math.ceil(currentIndex / itemsPerPage) + 1
+            });
+            
             currentIndex += itemsPerPage;
         }
 
@@ -213,5 +237,3 @@
     </script>
 </body>
 </html>
-
-
