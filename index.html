@@ -7,16 +7,13 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      // 1. 基础配置：开启增强型衡量
       gtag('config', 'G-D5YSD14H3P', {
           'send_page_view': true,
           'page_title': 'Super Deals Finds - Chollos AliExpress',
           'cookie_flags': 'SameSite=None;Secure'
       });
 
-      // 2. 核心详细追踪逻辑
       const tracker = {
-          // 统计商品点击：区分点击了图片、标题还是购物车按钮
           sendClick: (item, pos) => {
               gtag('event', 'select_item', {
                   item_list_id: "main_feed",
@@ -26,11 +23,10 @@
                       item_name: item.title,
                       discount: item.discount_rate,
                       price: item.discount_price,
-                      item_variant: pos // 记录是 carousel, grid_image, grid_btn
+                      item_variant: pos 
                   }]
               });
           },
-          // 统计商品曝光：只要商品出现在屏幕上就记录
           sendImpression: (item) => {
               gtag('event', 'view_item', {
                   items: [{
@@ -61,10 +57,10 @@
         @media (min-width: 768px) { #product-grid { grid-template-columns: repeat(4, 1fr); } }
         @media (min-width: 1280px) { #product-grid { grid-template-columns: repeat(5, 1fr); } }
         
-        /* 瀑布流合规悬浮条：解决申诉的关键 */
         .legal-float { position: fixed; right: 0; top: 40%; transform: translateY(-50%); z-index: 2000; display: flex; flex-direction: column; gap: 4px; }
-        .legal-tag { background: rgba(0,0,0,0.8); color: white; padding: 10px 14px; font-size: 10px; font-weight: 800; border-radius: 12px 0 0 12px; cursor: pointer; transition: all 0.3s; text-decoration: none; border-left: 3px solid #ff416c; }
-        .legal-tag:hover { background: #ff416c; padding-right: 25px; }
+        /* 这里就是修改后的真实链接样式 */
+        .legal-tag { background: rgba(0,0,0,0.8); color: white; padding: 10px 14px; font-size: 10px; font-weight: 800; border-radius: 12px 0 0 12px; cursor: pointer; transition: all 0.3s; text-decoration: none; border-left: 3px solid #ff416c; display: block; }
+        .legal-tag:hover { background: #ff416c; padding-right: 25px; color: white; }
 
         .product-card { transition: all 0.3s ease; border: 1px solid rgba(0,0,0,0.03); }
         .product-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
@@ -78,8 +74,8 @@
 <body class="bg-gray-50 font-sans text-gray-900">
 
     <div class="legal-float">
-        <a href="#" class="legal-tag">PRIVACY</a>
-        <a href="#" class="legal-tag">TERMS</a>
+        <a href="privacy.html" class="legal-tag">PRIVACY</a>
+        <a href="terms.html" class="legal-tag">TERMS</a>
         <div class="legal-tag" onclick="alert('As an AliExpress Associate, I earn from qualifying purchases.')">DISCLOSURE</div>
     </div>
 
@@ -90,7 +86,7 @@
                 <span class="text-xl font-black italic uppercase tracking-tighter text-gray-800">Super Deals <span class="text-red-600">Finds</span></span>
             </div>
             <div class="flex items-center gap-4">
-                <span id="stats" class="hidden md:inline-block text-[10px] font-bold text-gray-400 bg-white border px-3 py-1 rounded-full italic uppercase tracking-widest">Calculando...</span>
+                <span id="stats" class="hidden md:inline-block text-[10px] font-bold text-gray-400 bg-white border px-3 py-1 rounded-full italic uppercase tracking-widest text-center">Calculando...</span>
                 <i class="fa-solid fa-circle-check text-green-500 text-sm" title="AliExpress Verified Partner"></i>
             </div>
         </div>
@@ -127,11 +123,10 @@
         let allProducts = [];
         let currentIndex = 0;
         const itemsPerPage = 20;
-        let trackedDepths = new Set(); // 用于记录滑动深度避免重复触发
+        let trackedDepths = new Set();
 
         function formatPrice(price) { return parseFloat(price).toFixed(2); }
 
-        // 安全地将对象转为 HTML 属性字符串
         function safeObj(obj) {
             return JSON.stringify(obj).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
         }
@@ -141,25 +136,23 @@
                 const response = await fetch('wa_aliexpress_spain.json');
                 const data = await response.json();
                 
-                // 轮播图逻辑：取折扣最高
                 const topDeals = [...data].sort((a,b) => b.discount_rate - a.discount_rate).slice(0, 6);
                 renderCarousel(topDeals);
 
-                // 列表逻辑：随机打乱增加新鲜感
                 allProducts = data.sort(() => Math.random() - 0.5);
                 document.getElementById('stats').innerText = `${data.length} PRODUCTOS`;
 
-                // 配置曝光监听器
                 const observer = new IntersectionObserver((entries) => {
                     entries.forEach(entry => {
                         if (entry.isIntersecting) {
                             if (entry.target.id === 'sentinel') {
                                 loadMore();
                             } else {
-                                // 触发曝光事件
-                                const itemData = JSON.parse(entry.target.getAttribute('data-item'));
-                                tracker.sendImpression(itemData);
-                                observer.unobserve(entry.target); 
+                                try {
+                                    const itemData = JSON.parse(entry.target.getAttribute('data-item'));
+                                    tracker.sendImpression(itemData);
+                                    observer.unobserve(entry.target); 
+                                } catch(e){}
                             }
                         }
                     });
@@ -168,13 +161,11 @@
                 observer.observe(document.getElementById('sentinel'));
                 window.observer = observer;
 
-                // 滚动监听：回到顶部 + 滚动深度统计
                 window.addEventListener('scroll', () => {
                     const btn = document.getElementById('back-to-top');
                     if (window.scrollY > 800) btn.classList.add('show');
                     else btn.classList.remove('show');
 
-                    // 统计滑动深度（25%, 50%, 75%, 100%）
                     const scrollPercent = Math.round((window.scrollY + window.innerHeight) / document.documentElement.scrollHeight * 100);
                     const checkpoints = [25, 50, 75, 90];
                     checkpoints.forEach(cp => {
@@ -218,7 +209,7 @@
             const batch = allProducts.slice(currentIndex, currentIndex + itemsPerPage);
             
             if (batch.length === 0) {
-                document.getElementById('sentinel').innerHTML = "<p class='text-gray-400 text-[10px] font-bold py-10 tracking-[0.2em]'>FIN DE LAS OFERTAS</p>";
+                document.getElementById('sentinel').innerHTML = "<p class='text-gray-400 text-[10px] font-bold py-10 tracking-[0.2em] uppercase'>Fin de la selección</p>";
                 return;
             }
 
@@ -241,8 +232,8 @@
                         </div>
                         <div class="mt-auto flex items-end justify-between">
                             <div>
-                                <div class="text-[10px] text-gray-400 line-through italic font-mono leading-none">€${formatPrice(item.origin_price)}</div>
-                                <div class="text-xl font-black text-red-600 leading-none mt-1 font-mono">€${formatPrice(item.discount_price)}</div>
+                                <div class="text-[10px] text-gray-400 line-through italic font-mono leading-none text-left">€${formatPrice(item.origin_price)}</div>
+                                <div class="text-xl font-black text-red-600 leading-none mt-1 font-mono text-left">€${formatPrice(item.discount_price)}</div>
                             </div>
                             <a href="${item.affiliate_short_link}" onclick='tracker.sendClick(${safeObj(item)}, "grid_btn")' target="_blank" class="h-10 w-10 price-gradient text-white flex items-center justify-center rounded-2xl shadow-lg hover:rotate-12 transition-transform">
                                 <i class="fa-solid fa-cart-shopping text-xs"></i>
