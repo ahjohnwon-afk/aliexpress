@@ -7,26 +7,30 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
+      // 1. 基础配置：开启增强型衡量
       gtag('config', 'G-D5YSD14H3P', {
           'send_page_view': true,
-          'page_title': 'Home - Super Deals Finds Spain',
-          'cookie_flags': 'SameSite=None;Secure' // 增强跨境追踪稳定性
+          'page_title': 'Super Deals Finds - Chollos AliExpress',
+          'cookie_flags': 'SameSite=None;Secure'
       });
 
+      // 2. 核心详细追踪逻辑
       const tracker = {
+          // 统计商品点击：区分点击了图片、标题还是购物车按钮
           sendClick: (item, pos) => {
               gtag('event', 'select_item', {
-                  item_list_id: "main_list",
-                  item_list_name: "Homepage Feed",
+                  item_list_id: "main_feed",
+                  item_list_name: "Infinite Scroll Feed",
                   items: [{
                       item_id: String(item.item_id),
                       item_name: item.title,
                       discount: item.discount_rate,
                       price: item.discount_price,
-                      item_variant: pos 
+                      item_variant: pos // 记录是 carousel, grid_image, grid_btn
                   }]
               });
           },
+          // 统计商品曝光：只要商品出现在屏幕上就记录
           sendImpression: (item) => {
               gtag('event', 'view_item', {
                   items: [{
@@ -42,7 +46,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
-    <title>Chollos AliExpress España | Super Deals Finds</title>
+    <title>Super Deals Finds | Chollos de AliExpress en España</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -56,24 +60,39 @@
         #product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         @media (min-width: 768px) { #product-grid { grid-template-columns: repeat(4, 1fr); } }
         @media (min-width: 1280px) { #product-grid { grid-template-columns: repeat(5, 1fr); } }
-        .product-card { transition: all 0.3s ease; }
+        
+        /* 瀑布流合规悬浮条：解决申诉的关键 */
+        .legal-float { position: fixed; right: 0; top: 40%; transform: translateY(-50%); z-index: 2000; display: flex; flex-direction: column; gap: 4px; }
+        .legal-tag { background: rgba(0,0,0,0.8); color: white; padding: 10px 14px; font-size: 10px; font-weight: 800; border-radius: 12px 0 0 12px; cursor: pointer; transition: all 0.3s; text-decoration: none; border-left: 3px solid #ff416c; }
+        .legal-tag:hover { background: #ff416c; padding-right: 25px; }
+
+        .product-card { transition: all 0.3s ease; border: 1px solid rgba(0,0,0,0.03); }
+        .product-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
         .fade-in { animation: fadeIn 0.5s ease forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         #back-to-top { position: fixed; bottom: 30px; right: 20px; width: 45px; height: 45px; background: #ff416c; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.3s; }
         #back-to-top.show { opacity: 1; visibility: visible; }
-        footer a { transition: color 0.2s; }
-        footer a:hover { color: #ff416c; }
     </style>
 </head>
 <body class="bg-gray-50 font-sans text-gray-900">
+
+    <div class="legal-float">
+        <a href="#" class="legal-tag">PRIVACY</a>
+        <a href="#" class="legal-tag">TERMS</a>
+        <div class="legal-tag" onclick="alert('As an AliExpress Associate, I earn from qualifying purchases.')">DISCLOSURE</div>
+    </div>
 
     <nav class="glass-nav sticky top-0 z-[1000] px-4 py-3">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-bolt text-red-600 text-2xl"></i>
-                <span class="text-xl font-black italic uppercase tracking-tighter">Super Deals <span class="text-red-600">Finds</span></span>
+                <span class="text-xl font-black italic uppercase tracking-tighter text-gray-800">Super Deals <span class="text-red-600">Finds</span></span>
             </div>
-            <span id="stats" class="text-[10px] font-bold text-gray-400 bg-white border px-3 py-1 rounded-full italic uppercase tracking-widest">Calculando...</span>
+            <div class="flex items-center gap-4">
+                <span id="stats" class="hidden md:inline-block text-[10px] font-bold text-gray-400 bg-white border px-3 py-1 rounded-full italic uppercase tracking-widest">Calculando...</span>
+                <i class="fa-solid fa-circle-check text-green-500 text-sm" title="AliExpress Verified Partner"></i>
+            </div>
         </div>
     </nav>
 
@@ -86,31 +105,21 @@
         </div>
 
         <div class="flex items-center gap-4 mb-8">
-            <h2 class="text-2xl font-black italic tracking-tight uppercase">🔥 Chollos del Día</h2>
+            <h2 class="text-2xl font-black italic tracking-tight uppercase">🔥 Ofertas Exclusivas</h2>
             <div class="h-[1px] flex-grow bg-gray-200"></div>
         </div>
         
         <div id="product-grid"></div>
-        <div id="sentinel" class="h-40 flex items-center justify-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div></div>
+
+        <div id="sentinel" class="h-40 flex flex-col items-center justify-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cargando más chollos...</p>
+        </div>
     </main>
 
-    <footer class="bg-white border-t mt-20 py-12 px-4">
-        <div class="max-w-7xl mx-auto text-center">
-            <div class="flex justify-center gap-6 mb-6 text-sm font-bold text-gray-500 uppercase tracking-widest">
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
-                <a href="mailto:support@superdealsfinds.com">Contact Us</a>
-            </div>
-            <p class="text-xs text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                As an AliExpress Associate, Super Deals Finds earns from qualifying purchases. 
-                AliExpress and the AliExpress logo are trademarks of AliExpress.com, Inc. or its affiliates.
-                <br><br>
-                &copy; 2025 Super Deals Finds Spain. All rights reserved.
-            </p>
-        </div>
-    </footer>
-
-    <div id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})"><i class="fa-solid fa-arrow-up"></i></div>
+    <div id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+        <i class="fa-solid fa-arrow-up"></i>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
@@ -118,11 +127,12 @@
         let allProducts = [];
         let currentIndex = 0;
         const itemsPerPage = 20;
+        let trackedDepths = new Set(); // 用于记录滑动深度避免重复触发
 
         function formatPrice(price) { return parseFloat(price).toFixed(2); }
 
-        // 安全地将对象转为字符串
-        function safeString(obj) {
+        // 安全地将对象转为 HTML 属性字符串
+        function safeObj(obj) {
             return JSON.stringify(obj).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
         }
 
@@ -131,21 +141,25 @@
                 const response = await fetch('wa_aliexpress_spain.json');
                 const data = await response.json();
                 
+                // 轮播图逻辑：取折扣最高
                 const topDeals = [...data].sort((a,b) => b.discount_rate - a.discount_rate).slice(0, 6);
                 renderCarousel(topDeals);
 
+                // 列表逻辑：随机打乱增加新鲜感
                 allProducts = data.sort(() => Math.random() - 0.5);
                 document.getElementById('stats').innerText = `${data.length} PRODUCTOS`;
 
+                // 配置曝光监听器
                 const observer = new IntersectionObserver((entries) => {
                     entries.forEach(entry => {
                         if (entry.isIntersecting) {
                             if (entry.target.id === 'sentinel') {
                                 loadMore();
                             } else {
+                                // 触发曝光事件
                                 const itemData = JSON.parse(entry.target.getAttribute('data-item'));
                                 tracker.sendImpression(itemData);
-                                observer.unobserve(entry.target);
+                                observer.unobserve(entry.target); 
                             }
                         }
                     });
@@ -154,13 +168,24 @@
                 observer.observe(document.getElementById('sentinel'));
                 window.observer = observer;
 
+                // 滚动监听：回到顶部 + 滚动深度统计
                 window.addEventListener('scroll', () => {
                     const btn = document.getElementById('back-to-top');
                     if (window.scrollY > 800) btn.classList.add('show');
                     else btn.classList.remove('show');
+
+                    // 统计滑动深度（25%, 50%, 75%, 100%）
+                    const scrollPercent = Math.round((window.scrollY + window.innerHeight) / document.documentElement.scrollHeight * 100);
+                    const checkpoints = [25, 50, 75, 90];
+                    checkpoints.forEach(cp => {
+                        if (scrollPercent >= cp && !trackedDepths.has(cp)) {
+                            gtag('event', 'scroll_depth', { 'percent': cp });
+                            trackedDepths.add(cp);
+                        }
+                    });
                 });
 
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error("Data Load Error:", err); }
         }
 
         function renderCarousel(topDeals) {
@@ -172,12 +197,15 @@
                     <div class="relative z-10 flex flex-col md:flex-row items-center h-full p-8 md:p-16 gap-8 text-white">
                         <img src="${item.item_main_pic}" class="h-48 w-48 md:h-72 md:w-72 rounded-3xl shadow-2xl object-cover border-4 border-white/10">
                         <div class="flex-1 text-center md:text-left">
-                            <span class="bg-red-600 px-3 py-1 rounded-full text-[10px] font-bold mb-4 inline-block">-${item.discount_rate}%</span>
-                            <h3 class="text-2xl md:text-4xl font-black mb-4 line-clamp-2">${item.title}</h3>
-                            <div class="text-4xl md:text-6xl font-black text-yellow-400 mb-6">€${formatPrice(item.discount_price)}</div>
+                            <span class="bg-red-600 px-3 py-1 rounded-full text-[10px] font-bold mb-4 inline-block tracking-tighter animate-pulse">OFERTA BOMBA -${item.discount_rate}%</span>
+                            <h3 class="text-2xl md:text-4xl font-black mb-4 line-clamp-2 drop-shadow-lg">${item.title}</h3>
+                            <div class="flex items-center justify-center md:justify-start gap-4 mb-6">
+                                <span class="text-4xl md:text-6xl font-black text-yellow-400">€${formatPrice(item.discount_price)}</span>
+                                <span class="text-xl line-through opacity-50 italic">€${formatPrice(item.origin_price)}</span>
+                            </div>
                             <a href="${item.affiliate_short_link}" 
-                               onclick='tracker.sendClick(${safeString(item)}, "carousel")'
-                               target="_blank" class="inline-block px-12 py-4 bg-white text-red-600 font-black rounded-full shadow-xl">COMPRAR</a>
+                               onclick='tracker.sendClick(${safeObj(item)}, "carousel")'
+                               target="_blank" class="inline-block px-12 py-4 bg-white text-red-600 font-black rounded-full shadow-xl hover:scale-105 transition-transform uppercase">Ver Chollo</a>
                         </div>
                     </div>
                 </div>
@@ -188,26 +216,27 @@
         function loadMore() {
             const grid = document.getElementById('product-grid');
             const batch = allProducts.slice(currentIndex, currentIndex + itemsPerPage);
+            
             if (batch.length === 0) {
-                document.getElementById('sentinel').innerHTML = "<p class='text-gray-400 text-xs font-bold py-10'>FIN DE SELECCIÓN</p>";
+                document.getElementById('sentinel').innerHTML = "<p class='text-gray-400 text-[10px] font-bold py-10 tracking-[0.2em]'>FIN DE LAS OFERTAS</p>";
                 return;
             }
 
             batch.forEach(item => {
                 const stars = Math.round(item.comment_score || 0);
                 const card = document.createElement('div');
-                card.className = "product-card bg-white rounded-3xl overflow-hidden shadow-sm flex flex-col fade-in border border-gray-100";
-                card.setAttribute('data-item', JSON.stringify(item));
+                card.className = "product-card bg-white rounded-3xl overflow-hidden shadow-sm flex flex-col fade-in";
+                card.setAttribute('data-item', JSON.stringify(item)); 
                 
                 card.innerHTML = `
-                    <a href="${item.affiliate_short_link}" onclick='tracker.sendClick(${safeString(item)}, "grid_image")' target="_blank" class="block relative aspect-square bg-gray-50">
+                    <a href="${item.affiliate_short_link}" onclick='tracker.sendClick(${safeObj(item)}, "grid_image")' target="_blank" class="block relative aspect-square bg-gray-50">
                         <img src="${item.item_main_pic}" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity" onload="this.style.opacity='1'">
                         <div class="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md">-${item.discount_rate}%</div>
                     </a>
                     <div class="p-4 flex flex-col flex-grow">
                         <h3 class="text-[11px] font-bold line-clamp-2 h-8 mb-2 leading-tight text-gray-700">${item.title}</h3>
                         <div class="flex items-center gap-1 mb-3">
-                            ${Array(5).fill(0).map((_, i) => `<i class="fa-solid fa-star text-[8px] ${i < stars ? 'text-yellow-400' : 'text-gray-100'}"></i>`).join('')}
+                            ${Array(5).fill(0).map((_, i) => `<i class="fa-solid fa-star text-[8px] ${i < stars ? 'text-yellow-400' : 'text-gray-200'}"></i>`).join('')}
                             <span class="text-[9px] text-gray-300 font-bold ml-1 uppercase tracking-tighter">${item.comment_30d || 0}+ vtas</span>
                         </div>
                         <div class="mt-auto flex items-end justify-between">
@@ -215,8 +244,8 @@
                                 <div class="text-[10px] text-gray-400 line-through italic font-mono leading-none">€${formatPrice(item.origin_price)}</div>
                                 <div class="text-xl font-black text-red-600 leading-none mt-1 font-mono">€${formatPrice(item.discount_price)}</div>
                             </div>
-                            <a href="${item.affiliate_short_link}" onclick='tracker.sendClick(${safeString(item)}, "grid_btn")' target="_blank" class="h-9 w-9 price-gradient text-white flex items-center justify-center rounded-2xl shadow-lg hover:rotate-12 transition-transform">
-                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            <a href="${item.affiliate_short_link}" onclick='tracker.sendClick(${safeObj(item)}, "grid_btn")' target="_blank" class="h-10 w-10 price-gradient text-white flex items-center justify-center rounded-2xl shadow-lg hover:rotate-12 transition-transform">
+                                <i class="fa-solid fa-cart-shopping text-xs"></i>
                             </a>
                         </div>
                     </div>
@@ -225,12 +254,8 @@
                 window.observer.observe(card);
             });
             
-            // 额外统计：每加载一次记录一个 GA 事件，看看用户翻了多少页
-            gtag('event', 'load_more', {
-                'page_number': Math.ceil(currentIndex / itemsPerPage) + 1
-            });
-            
             currentIndex += itemsPerPage;
+            gtag('event', 'load_more', { 'batch_index': currentIndex / itemsPerPage });
         }
 
         init();
